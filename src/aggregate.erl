@@ -11,13 +11,13 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1]).
+-export([start_link/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--export([add/1, current/0]).
+-export([add/2, current/1]).
 -define(SERVER, ?MODULE). 
 
 -record(state, {aggregated :: any(),
@@ -27,10 +27,10 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-add(Value) ->
-    gen_server:cast(?MODULE, {add, Value}).
-current() ->
-    gen_server:call(?MODULE, current).
+add(Instance,Value) ->
+    gen_server:call(Instance, {add, Value}).
+current(Instance) ->
+    gen_server:call(Instance, current).
 %%--------------------------------------------------------------------
 %% @doc
 %% Starts the server
@@ -38,8 +38,8 @@ current() ->
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Aggregator) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [Aggregator], []).
+start_link(AggregatorFun, Name) ->
+    gen_server:start_link({local, Name}, ?MODULE, [AggregatorFun], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -48,15 +48,16 @@ start_link(Aggregator) ->
 init([Aggregator]) ->
     {ok, #state{aggregator_fun = Aggregator}}.
 
+handle_call({add,Value},_From, #state{aggregator_fun = F, aggregated = SoFar} = State) ->    
+    Aggregated = F(Value,SoFar),
+    {reply, Aggregated, State#state{aggregated = Aggregated}};
+
 handle_call(current, _From, #state{aggregated = Result} = State) ->
     {reply, Result, State};
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
-
-handle_cast({add,Value}, #state{aggregator_fun = F, aggregated = SoFar} = State) ->    
-    {noreply, State#state{aggregated = F(Value,SoFar)}};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
