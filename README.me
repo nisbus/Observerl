@@ -1,0 +1,15 @@
+Observerl
+=========  
+  
+To start with test like this:  
+  
+./rebar compile  
+cd ebin  
+erl  
+rr(observer).  
+F = "fun(X) -> X < 30 end.".  
+A = "fun(X,Y) -> case Y of undefined -> X; _ -> X+Y end end.".  
+S = #observer_state{filters = F, aggregate = A}.  
+observer:subscribe(S).  
+observer:on_next(20).   
+observer:on_next(20).  
