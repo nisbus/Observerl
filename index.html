@@ -31,32 +31,54 @@
     <!-- MAIN CONTENT -->
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
-        <h3>Welcome to GitHub Pages.</h3>
+        <h3>Welcome to Observerl.</h3>
 
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:</p>
+<p>Observerl is a process for filtering and aggregating streams of data based on subscriber preferences.
+   It is inspired by the Reactive Extensions by Microsoft.
+</p>
 
-<pre><code>$ cd your_repo_root/repo_name
-$ git fetch origin
-$ git checkout gh-pages
-</code></pre>
+<h3>How it works</h3>
 
-<p>If you're using the GitHub for Mac, simply sync your repository and you'll see the new branch.</p>
+<p>You start by creating your datastream that can be anything really.
+   You then need some way for your subscribers to call the application with their subscription request (Websockets?).
+   When a request is received, your application should create a new observer for the subscriber and feed it the filters
+provided by the subscriber. Then you need to have your datastream call the on_next(Value) of the observer 
+for each value that it produces.
+When an observer receives a value it will go through all of it's subscribers and run the filters provided earlier.
+If the value received passes through all the filters it is then put through the aggregator (optionally provided by the subscriber).
+The final pass is to check if the subscriber is windowing the data and if so the value is pushed to the subscribers window which will 
+notify the subscriber of new data when it arrives.</p>
 
-<h3>Designer Templates</h3>
+<h3>Filters</h3>
 
-<p>We've crafted some handsome templates for you to use. Go ahead and continue to layouts to browse through them. You can easily go back to edit your page before publishing. After publishing your page, you can revisit the page generator and switch to another theme. Your Page content will be preserved if it remained markdown format.</p>
+<p>Filters are just simple erlang functions that return either true or false.
+The subscriber can send in his filters as erlang funs or as a string representation of an erlang fun.</p>
 
-<h3>Rather Drive Stick?</h3>
+<h3>Aggregator</h3>
 
-<p>If you prefer to not use the automatic generator, push a branch named <code>gh-pages</code> to your repository to create a page manually. In addition to supporting regular HTML content, GitHub Pages support Jekyll, a simple, blog aware static site generator written by our own Tom Preston-Werner. Jekyll makes it easy to create site-wide headers and footers without having to copy them across every page. It also offers intelligent blog support and other advanced templating features.</p>
+<p>The aggregator function provided by the subscriber is defined the same way as the filter functions but there can only be
+one aggregator function per subscriber.
+It takes the form fun(X,Y) -> any() end. where X is the new value and Y is the current aggregated value.</p>
 
-<h3>Authors and Contributors</h3>
+<h3>Window</h3>
 
-<p>You can <a href="https://github.com/blog/821" class="user-mention">@mention</a> a GitHub username to generate a link to their profile. The resulting <code>&lt;a&gt;</code> element will link to the contributor's GitHub Profile. For example: In 2007, Chris Wanstrath (<a href="https://github.com/defunkt" class="user-mention">@defunkt</a>), PJ Hyett (<a href="https://github.com/pjhyett" class="user-mention">@pjhyett</a>), and Tom Preston-Werner (<a href="https://github.com/mojombo" class="user-mention">@mojombo</a>) founded GitHub.</p>
+<p>The subscriber can define a window for which the data will be aggregated.
+There are two types of windows:
+  <ul>
+    <il> Time based </il>
+    <il> Size based </il>
+  </ul>
+  Time based windows collect the data for a specified timeframe and notify the subscriber with all the data for the 
+  time-frame on each tick (provided by the subscriber).
+  Size based windows collect the incoming data until it reaches the size given by the subscriber.
+  When the size is reached, the window will notify the subscriber with the latest # of values equal to the size of the
+  window.
+</p>
 
-<h3>Support or Contact</h3>
-
-<p>Having trouble with Pages? Check out the documentation at <a href="http://help.github.com/pages">http://help.github.com/pages</a> or contact <a href="mailto:support@github.com">support@github.com</a> and we’ll help you sort it out.</p>
+<h3>Documentation</h3>
+<p>
+  You can find the code documentation <a href="http://nisbus.github.com/Observerl/doc/index.html">here</a>
+</p>
       </section>
     </div>
 
