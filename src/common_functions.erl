@@ -16,11 +16,10 @@
 %%%===================================================================
 
 is_defined_function(FunName) when is_atom(FunName)->
-    Info = common_functions:module_info(),
-    Exports = proplists:get_value(exports,Info),
+    Info = common_functions:module_info(exports),
     FunList = lists:map(fun({Fun,_Arity}) ->
 		      Fun
-	      end,Exports),
+	      end,Info),
     lists:member(FunName, FunList);
 
 is_defined_function(FunName) when is_list(FunName)->

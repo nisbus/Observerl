@@ -29,10 +29,16 @@ make_fun(Fun) when is_function(Fun) ->
 make_fun(Fun) when is_binary(Fun) ->
     make_fun(binary_to_list(Fun));
 make_fun(Fun) ->
-    {ok, F,_} = erl_scan:string(Fun),
-    {ok,Exp} = erl_parse:parse_exprs(F),
-    {_,Fun0,_} = erl_eval:exprs(Exp,erl_eval:new_bindings()),
-    Fun0.
+    case common_functions:is_defined_function(Fun) of
+	true ->
+	    F = list_to_atom(Fun),
+	    common_functions:F();
+	false ->
+	    {ok, F,_} = erl_scan:string(Fun),
+	    {ok,Exp} = erl_parse:parse_exprs(F),
+	    {_,Fun0,_} = erl_eval:exprs(Exp,erl_eval:new_bindings()),
+	    Fun0
+    end.
 
 %%%@doc
 %%%  Creates a list of functions from a list of strings or binary.
