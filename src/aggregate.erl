@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/2]).
+-export([start_link/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -38,8 +38,8 @@ current(Instance) ->
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(AggregatorFun, Name) ->
-    gen_server:start_link({local, Name}, ?MODULE, [AggregatorFun], []).
+start_link(AggregatorFun) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [AggregatorFun], []).
 
 %%%===================================================================
 %%% gen_server callbacks
