@@ -64,6 +64,9 @@ stop(Pid) ->
 %%%  Subscribes to an observer.
 %%%   #subscription{}:
 %%%      filters = list of filters to apply to the stream.
+%%%      aggregate = function to apply to the stream to aggregate values.
+%%%      transform = function to transform the end result.
+%%%      window = time or size to window the data.
 %%%@end
 -spec subscribe(Subscription :: #subscription{}) -> ok.
 subscribe(Subscription) ->
