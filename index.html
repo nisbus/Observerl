@@ -47,7 +47,8 @@ for each value that it produces.
 When an observer receives a value it will go through all of it's subscribers and run the filters provided earlier.
 If the value received passes through all the filters it is then put through the aggregator (optionally provided by the subscriber).
 The final pass is to check if the subscriber is windowing the data and if so the value is pushed to the subscribers window which will 
-notify the subscriber of new data when it arrives.</p>
+notify the subscriber of new data when it arrives.
+additionally the subscriber can supply a transform function to transform the output before it gets received.</p>
 
 <h3>Filters</h3>
 
@@ -74,7 +75,11 @@ There are two types of windows:
   When the size is reached, the window will notify the subscriber with the latest # of values equal to the size of the
   window.
 </p>
-
+<h3>Transform</h3>
+<p>
+  The transform function can be provided by the subscriber to transform the output before it's sent to him. The transform function can take any form as long as it parses the normal output and returns something else.
+Note that transforms are not implemented for windows yet.
+</p>
 <h3>Documentation</h3>
 <p>
   You can find the code documentation <a href="http://nisbus.github.com/Observerl/doc/index.html">here</a>
