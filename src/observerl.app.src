@@ -1,11 +1,11 @@
 {application, observerl,
  [
-  {description, ""},
+  {description, "An observer for subscribing to streams of data and applying filters to it."},
   {vsn, "1"},
   {registered, []},
   {applications, [
                   kernel,
-                  stdlib
+                  stdlib		  
                  ]},
   {mod, { observerl_app, []}},
   {env, []}

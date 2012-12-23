@@ -8,9 +8,10 @@
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
-
+%%% @doc Starts the application
 start(_StartType, _StartArgs) ->
     observerl_sup:start_link().
 
+%%% @doc Stops the application
 stop(_State) ->
     ok.

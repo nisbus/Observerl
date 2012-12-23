@@ -8,7 +8,9 @@
 *.txt
 /ebin/*.*
 .eunit/
+
 /doc/
+!/doc/overview.edoc
 /deps/*
 *.tar*
 *.so

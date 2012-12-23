@@ -1,17 +1,9 @@
 %%%-------------------------------------------------------------------
 %%% @author nisbus <nisbus@gmail.com>
-%%% @copyright (C) 2012, nisbus
+%%% @copyright nisbus (C) 2012, nisbus
 %%% @doc
-%%%   winderl is for managing windowed streams of data.
-%%%   It provides an API for adding data to the window and getting notifications 
-%%%   when data expires from the window.
-%%%   It also provides calls to get the current window and the current external state.
-%%%
-%%%   When starting the server you need to give it an update fun to execute on incoming data.
-%%%   You can optionally provide it with an expire fun to execute on all expired data.
-%%%   The server can also manage state given to you in the start but if you do so you must also
-%%%   provide update- and (optionally) expired funs that takes in two arguments to update the external state
-%%%   when data arrives or is expired.
+%%%   sized window notifies the subscriber when the window has reached
+%%%   the number of elements specified by the size.
 %%% @end
 %%% Created : 18 Nov 2012 by nisbus <nisbus@gmail.com>
 %%%-------------------------------------------------------------------
@@ -32,9 +24,6 @@
 -record(state, 
 	{
 	  window_length :: integer(),
-	  expired_fun :: fun(),
-	  update_fun :: fun(),
-	  external_state :: any(),
 	  current_window :: [],
 	  listener :: pid()
 	}).
@@ -42,22 +31,26 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-%% @doc
-%%  Updates the current window with new data
-%% @end
+%%% @doc
+%%%  Updates the current window with new data
+%%% @end
 update(Instance,Data) ->
     gen_server:cast(Instance,{incoming_data,Data}).
 
-%% @doc Returns the data in the current window
+%%% @doc Returns the data in the current window
 current_window(Instance) ->
     gen_server:call(Instance,current_state).	
 
+%%%@doc stops the window
 stop(Instance) ->
     gen_server:cast(Instance,stop).
-%%--------------------------------------------------------------------   
-%% @doc
-%% Starts the server
-%%--------------------------------------------------------------------
+%%%--------------------------------------------------------------------   
+%%% @doc
+%%% Starts the server
+%%%   WinSize is the number of elements to keep in the window.
+%%%   Listener is the pid of the subscriber.
+%%% @end
+%%%--------------------------------------------------------------------
 -spec start_link(WinSize :: integer(), Listener :: pid()) -> {ok,pid()}| ignore | {error,Error :: any()}.
 start_link(WinSize, Listener) ->
     Ref = erlang:make_ref(),
@@ -68,7 +61,7 @@ start_link(WinSize, Listener) ->
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
-
+%%% @hidden
 init([{WinSize, Listener}]) ->
     
     {ok, #state
@@ -79,16 +72,20 @@ init([{WinSize, Listener}]) ->
      }
     }.
 
+%%% @hidden
 handle_call(current_window, _From, #state{current_window = Window} = State) ->
     {reply, Window, State};
 
+%%% @hidden
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
 
+%%% @hidden
 handle_cast(stop, State) ->
     {stop,normal, State};
 
+%%% @hidden
 handle_cast({incoming_data, Data}, #state{current_window = W, window_length = Size, listener = Listener} = State) ->
     NewWin = lists:append(W,[Data]),
     Exp = process_expired(NewWin, Size),
@@ -101,15 +98,19 @@ handle_cast({incoming_data, Data}, #state{current_window = W, window_length = Si
     end,		
     {noreply,State#state{current_window = Exp}};
 
+%%% @hidden
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
+%%% @hidden
 handle_info(_Info, State) ->
     {noreply, State}.
 
+%%% @hidden
 terminate(_Reason, _State) ->
     ok.
 
+%%% @hidden
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
@@ -117,9 +118,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%Internal functions
 %%%===================================================================
 
-%% @doc
-%%    Returns old items from the current window
-%% @end
+%%% @hidden
 get_old_data(Data, WinSize) ->
     Remove = length(Data) - WinSize,
     case Remove > 0 of
@@ -129,10 +128,7 @@ get_old_data(Data, WinSize) ->
 	    []
     end.
 
-%% @doc
-%%   Removes each expired element and updates the window.
-%%   Runs the expiredfun for each expired item and updates the external_state if needed.
-%% @end
+%%% @hidden
 process_expired(Window, Size) ->
     ExpiredData = get_old_data(Window,Size),
     case ExpiredData of

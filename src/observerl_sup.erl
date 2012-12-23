@@ -5,7 +5,7 @@
 
 %% API
 -export([start_link/0]).
-
+-export([add_observer/1]).
 %% Supervisor callbacks
 -export([init/1]).
 
@@ -24,5 +24,13 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, []} }.
+    SupFlags = {simple_one_for_one, 1000, 3600},
+    Child = {observer, {observer, start_link, []},
+	     temporary, 2000, worker, [observer]},
+    {ok, {SupFlags,[Child]}}.
 
+%%% @doc
+%%%   Starts a new observer
+%%% @end
+add_observer(Args) ->
+    supervisor:start_child(?MODULE, [Args]).

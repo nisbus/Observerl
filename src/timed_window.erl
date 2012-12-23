@@ -2,16 +2,11 @@
 %%% @author nisbus <nisbus@gmail.com>
 %%% @copyright (C) 2012, nisbus
 %%% @doc
-%%%   winderl is for managing windowed streams of data.
-%%%   It provides an API for adding data to the window and getting notifications 
-%%%   when data expires from the window.
-%%%   It also provides calls to get the current window and the current external state.
-%%%
-%%%   When starting the server you need to give it an update fun to execute on incoming data.
-%%%   You can optionally provide it with an expire fun to execute on all expired data.
-%%%   The server can also manage state given to you in the start but if you do so you must also
-%%%   provide update- and (optionally) expired funs that takes in two arguments to update the external state
-%%%   when data arrives or is expired.
+%%%   A process for storing a window of a timed size.
+%%%   The window monitors the window elements at the time in ms given 
+%%%   by the precision parameter.
+%%%   The window will also notify subscribers with the contents of the 
+%%%   window at the interval given by the precision parameter.
 %%% @end
 %%% Created : 18 Nov 2012 by nisbus <nisbus@gmail.com>
 %%%-------------------------------------------------------------------
@@ -43,22 +38,39 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-%% @doc
-%%  Updates the current window with new data
-%% @end
+%%% @doc
+%%%  Updates the current window with new data
+%%%  Instance is the pid of the window.
+%%% @end
+-spec update(Data :: any(), Instance :: pid()) -> noreply.
 update(Data,Instance) ->
     gen_server:cast(Instance,{incoming_data,Data}).
 
-%% @doc Returns the data in the current window
+%%% @doc 
+%%%   Returns the data in the current window.
+%%%   Instance is the pid of the window
+%%% @end
+-spec current_window(Instance :: pid()) -> [any()].
 current_window(Instance) ->
     gen_server:call(Instance,current_window).	
 
+%%% @doc
+%%%   Stops the window process
+%%%   Instance is the pid of the window
+%%% @end
+-spec stop(Instance :: pid()) -> noreply.
 stop(Instance) ->
     gen_server:cast(Instance,stop).
-%%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%--------------------------------------------------------------------
+
+%%%--------------------------------------------------------------------
+%%% @doc
+%%% Starts the server.
+%%%   WinSize is the timeframe to keep windowed.
+%%%   Precision is the time in ms at which the window will expire items
+%%%   and notify the subscriber.
+%%%   ListenerPid is the pid of the subscriber
+%%% @end
+%%%--------------------------------------------------------------------
 -spec start_link(WinSize :: timeframe(), Precision :: integer(), Listener :: pid()) -> {ok,pid()}| ignore | {error,Error :: any()}.
 start_link(WinSize, Precision, Listener) ->
     Ref = erlang:make_ref(),
@@ -69,6 +81,7 @@ start_link(WinSize, Precision, Listener) ->
 %%% gen_server callbacks
 %%%===================================================================
 
+%%% @hidden
 init([{WinSize,Precision,Listener}]) ->    
     {ok,{interval,TRef}} = timer:send_interval(1*Precision, check_expired),
     {ok, #state
@@ -80,36 +93,40 @@ init([{WinSize,Precision,Listener}]) ->
        listener = Listener}
     }.
 
-
+%%% @hidden
 handle_call(current_window, _From, #state{current_window = Window} = State) ->
     {reply, Window, State};
 
+%%% @hidden
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
 
+%%% @hidden
 handle_cast(stop, State) ->
     {stop,normal, State};
 
+%%% @hidden
 handle_cast({incoming_data, Data},#state{current_window = W} = State) ->
     NewWindow = add_new(W, Data),
     {noreply,State#state{current_window = NewWindow}};
 
+%%% @hidden
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-%% @doc
-%%    This gets called internally by the timer every period
-%% @end
+%%% @hidden
 handle_info(check_expired, #state{current_window = W, window_length_in_ms = MS, listener = Pid} = State) ->
     NewWin = process_expired(W,MS),
     io:format("sending window on time ~p\n",[NewWin]),
     Pid ! {window, NewWin, self()},
     {noreply, State#state{current_window = NewWin}};
 
+%%% @hidden
 handle_info(_Info, State) ->
     {noreply, State}.
 
+%%% @hidden
 terminate(_Reason, #state{check_expired_timer = T} = _State) ->
     case T of
     	undefined ->
@@ -120,6 +137,7 @@ terminate(_Reason, #state{check_expired_timer = T} = _State) ->
     end,
     ok.
 
+%%% @hidden
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
@@ -127,17 +145,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%Internal functions
 %%%===================================================================
 
-%% @doc
-%%    Returns old items from the current window
-%% @end
+%%% @hidden
 get_old_data(Data, WinSize) ->
     CurrentTime = now_to_milliseconds(erlang:now()),    
     Expired = CurrentTime-WinSize,
     [{Time,X} || {Time,X} <- Data, Time < Expired].
 
-%% @doc
-%%   Removes each expired element and updates the window.
-%% @end
+%%% @hidden
 process_expired(Window, MS) ->
     ExpiredData = get_old_data(Window,MS),
     case ExpiredData of
@@ -147,22 +161,22 @@ process_expired(Window, MS) ->
 	    lists:subtract(Window,ExpiredData)
     end.
 
-%% @doc
-%%    Adds the new data (with timestamp) to the window.
-%% @end
+%%% @hidden
 add_new(Window,NewData) ->
     Add = {now_to_milliseconds(erlang:now()),NewData},
     lists:append(Window,[Add]).
     
+%%% @hidden
 timeframe_to_milliseconds({Hour, Minute,Sec}) ->
     timeframe_to_milliseconds({Hour,Minute,Sec,0});
 timeframe_to_milliseconds({Hour, Minute,Sec,Milliseconds}) ->
     (Hour*3600000)+(Minute*60000)+(Sec*1000)+Milliseconds.
     
-%% @doc
+%%
 %%   Thanks to zaphar for this gist
 %%   https://gist.github.com/104903
-%% @end
+%%
+%%% @hidden
 now_to_seconds({Mega, Sec, _}) ->
     (Mega * 1000000) + Sec.   
     
