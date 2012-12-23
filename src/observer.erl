@@ -40,18 +40,18 @@ on_completed() ->
 list_observers() ->
     gen_server:call(?SERVER, list).
 
-subscribe(Observer, Pid) ->
-    gen_server:call(Pid,{subscribe, Observer}).
-unsubscribe(P,Pid) ->
-    gen_server:call(Pid,{unsubscribe, P}).
-on_next(Value,Pid) ->
-    gen_server:cast(Pid,{next,Value}).
-on_error(Exception,Pid) ->
-    gen_server:cast(Pid,{error,Exception}).
-on_completed(Pid) ->
-    gen_server:cast(Pid,{completed}).
-list_observers(Pid) ->
-    gen_server:call(Pid, list).
+subscribe(Observer, Name) ->
+    gen_server:call(Name,{subscribe, Observer}).
+unsubscribe(P,Name) ->
+    gen_server:call(Name,{unsubscribe, P}).
+on_next(Value,Name) ->
+    gen_server:cast(Name,{next,Value}).
+on_error(Exception,Name) ->
+    gen_server:cast(Name,{error,Exception}).
+on_completed(Name) ->
+    gen_server:cast(Name,{completed}).
+list_observers(Name) ->
+    gen_server:call(Name, list).
 
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
@@ -183,7 +183,6 @@ run_filters(F,Value) when is_function(F) ->
 run_filters(F,Value) ->
     filter:match(F,Value).
 
-
 run_aggregate([],Value) ->
     {true, Value};
 run_aggregate(undefined,Value) ->
@@ -214,4 +213,3 @@ create_aggregator(A) when is_list(A) ->
 	     end,
     {ok,Pid} = aggregate:start_link(AAsFun),
     Pid.
-
