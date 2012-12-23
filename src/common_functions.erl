@@ -8,12 +8,29 @@
 %%% Created : 23 Dec 2012 by nisbus <nisbus@gmail.com>
 %%%-------------------------------------------------------------------
 -module(common_functions).
-
+-export([is_defined_function/1]).
 %% API
 -export([sum/0,moving_average/0,standard_deviation_sample/0,standard_deviation_population/0]).
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+is_defined_function(FunName) when is_atom(FunName)->
+    Info = common_functions:module_info(),
+    Exports = proplists:get_value(exports,Info),
+    FunList = lists:map(fun({Fun,_Arity}) ->
+		      Fun
+	      end,Exports),
+    lists:member(FunName, FunList);
+
+is_defined_function(FunName) when is_list(FunName)->
+    is_defined_function(list_to_atom(FunName));
+    
+is_defined_function(FunName) when is_binary(FunName)->
+    is_defined_function(binary_to_list(FunName));
+is_defined_function(_) ->
+    false.
+    
 moving_average() ->
     fun(X,Y) ->
 	    case Y of
