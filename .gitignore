@@ -8,14 +8,12 @@
 *.txt
 /ebin/*.*
 .eunit/
-
-/doc/
+/doc/*
 !/doc/overview.edoc
 /deps/*
 *.tar*
 *.so
 *.o
-/doc/*
 *.trace
 *.production
 /eproject.cfg
