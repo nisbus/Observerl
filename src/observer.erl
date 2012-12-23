@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 -include("../include/types.hrl").
 %% API
--export([start_link/0, start_link/1]).
+-export([start_link/0, start_link/1,stop/0,stop/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -59,6 +59,10 @@ start_link() ->
 start_link(Name) ->
     gen_server:start_link({local, Name}, ?MODULE, [], []).
 
+stop() ->
+    gen_server:cast(?SERVER,stop).
+stop(Name) ->
+    gen_server:cast(Name,stop).
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -82,14 +86,16 @@ handle_call({subscribe, #observer_state{filters = F, aggregate = A,
     {reply,ok,add(Observer#observer_state{filters = Filters,
 					 aggregate = Agg, notify = FromPid},State)};	   
 
-handle_call({unsubscribe, Pid},_From,State) ->    
+handle_call({unsubscribe, Pid},_From,State) ->  
+    io:format("unsubscribing"),
     {reply,ok,remove(Pid,State)};	   
-
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
 
+handle_cast(stop,State) ->    
+    {stop,normal,State};	   
 
 handle_cast({next,Value}, #state{observers = Obs} = State) ->
     lists:foreach(fun(#observer_state{filters = F, aggregate =_A,
@@ -105,7 +111,7 @@ handle_cast({next,Value}, #state{observers = Obs} = State) ->
 					      {true, Window} ->
 						  io:format("Value windowed ~p\n",[Window]),
 						  io:format("Sending value to subscriber ~p\n",[_N]),
-						  _N ! Window;
+						  _N ! {Window, self()};
 					      _ ->
 						  void
 					  end;
@@ -125,7 +131,7 @@ handle_cast({error,Exception}, #state{observers = Obs} = State) ->
     {noreply, State};
 
 handle_cast(completed, #state{observers = Obs} = State) ->
-    lists:foreach(fun(O) ->
+    lists:foreach(fun(O) ->			  
 			  O ! {completed, self()}
 		  end,Obs),
     {noreply, State};
@@ -137,8 +143,19 @@ handle_cast(_Msg, State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-terminate(_Reason, _State) ->
-    ok.
+terminate(_Reason, #state{observers = Obs} = _State) ->
+    lists:foreach(fun(O) ->
+			  #observer_state{aggregate = A, window = W} = O,
+			  case is_pid(A) of
+			      true ->
+				  aggregate:stop(A);
+			      false -> void
+			  end,
+			  case is_pid(W) of
+			      true -> window:stop(W);
+			      _ -> void
+			  end
+		  end,Obs).
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
@@ -147,7 +164,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 remove(Pid,#state{observers = Obs} =State) ->
-    Subscriber = lists:key_find(Pid, #observer_state.notify,Obs),
+    Subscriber = lists:keyfind(Pid, #observer_state.notify,Obs),
+    io:format("Subscriber ~p\n",[Subscriber]),
     case Subscriber of
 	[] -> State;
 	_ -> State#state{observers= lists:delete(Subscriber,Obs)}
