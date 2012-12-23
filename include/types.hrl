@@ -30,6 +30,7 @@
 %%%     filters: the subscriber can provide a list of functions to filter the stream by.
 %%%              all the functions must be of the form fun(X) -> true | false end.
 %%%              To get a value published to the subscriber, all the filters must return true.
+%%%     transform: a function to transform the output after all filtering has been done.
 %%%     aggregate: a function to aggregate the values from the stream, this function must take the
 %%%                form fun(X,Y) -> any() end. where X is the incoming value and Y is the current
 %%%                aggregated value.
