@@ -27,8 +27,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-subscribe(Observer) ->
-    gen_server:call(?SERVER,{subscribe, Observer}).
+subscribe(Subscription) ->
+    gen_server:call(?SERVER,{subscribe, Subscription}).
 unsubscribe(P) ->
     gen_server:call(?SERVER,{unsubscribe, P}).
 on_next(Value) ->
@@ -40,8 +40,8 @@ on_completed() ->
 list_observers() ->
     gen_server:call(?SERVER, list).
 
-subscribe(Observer, Name) ->
-    gen_server:call(Name,{subscribe, Observer}).
+subscribe(Subscription, Name) ->
+    gen_server:call(Name,{subscribe, Subscription}).
 unsubscribe(P,Name) ->
     gen_server:call(Name,{unsubscribe, P}).
 on_next(Value,Name) ->
@@ -74,17 +74,21 @@ handle_call(list, _From, #state{observers = Obs}=State) ->
     {reply, Obs, State};
 
 handle_call({subscribe, #observer_state{filters = F, aggregate = A,
-			 window = _W} = Observer},From,State) ->
+			 window = W}},From,State) ->
     Filters = case io_lib:printable_list(F) of
 		  true ->
 		      eval:make_fun(F);
 		  false ->
 		      eval:make_funs(F)
 	      end,
-    Agg = create_aggregator(A),    
+    Agg = create_aggregator(A),  
+    Window = create_window(W),
     {FromPid, _FromRef} = From,
-    {reply,ok,add(Observer#observer_state{filters = Filters,
-					 aggregate = Agg, notify = FromPid},State)};	   
+    {reply,ok,add(#observer_state{filters = Filters,
+				  aggregate = Agg,
+				  window = Window,
+				  notify = FromPid},
+		  State)};	   
 
 handle_call({unsubscribe, Pid},_From,State) ->  
     io:format("unsubscribing"),
@@ -109,10 +113,11 @@ handle_cast({next,Value}, #state{observers = Obs} = State) ->
 					  io:format("Value aggregated ~p\n",[Aggregate]),
 					  case run_window(_W,Aggregate) of
 					      {true, Window} ->
-						  io:format("Value windowed ~p\n",[Window]),
+						  io:format("Value not windowed ~p\n",[Window]),
 						  io:format("Sending value to subscriber ~p\n",[_N]),
 						  _N ! {Window, self()};
 					      _ ->
+						  io:format("value is windowed, window will notify subscriber\n"),
 						  void
 					  end;
 				      false ->
@@ -138,7 +143,7 @@ handle_cast(completed, #state{observers = Obs} = State) ->
 
 handle_cast(_Msg, State) ->
     io:format("Unknown message ~p~n",[_Msg]),
-    {noreply, State}.
+    {noreply, State}.    
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -193,8 +198,15 @@ run_aggregate(A,Value) when is_pid(A) ->
 run_aggregate(_A, _Value) ->
     false.
     
-run_window(_W,Value) ->
+run_window({timed,W},Value) when is_pid(W) ->
+    timed_window:update(Value,W),
+    {false,Value};
+run_window({sized,W},Value) when is_pid(W) ->
+    sized_window:update(W,Value),
+    {false,Value};
+run_window(_,Value) ->    
     {true,Value}.
+
 
 create_aggregator([]) ->
     undefined;
@@ -213,3 +225,13 @@ create_aggregator(A) when is_list(A) ->
 	     end,
     {ok,Pid} = aggregate:start_link(AAsFun),
     Pid.
+
+create_window(undefined) ->
+    undefined;
+create_window({timed, {H,M,S},Precision, Listener}) ->    
+    {ok, Pid} = timed_window:start_link({H,M,S},Precision, Listener),
+    {timed,Pid};    
+create_window({sized, Size, Listener}) ->    
+    {ok, Pid} = sized_window:start_link(Size,Listener),
+    {sized,Pid}.
+    
