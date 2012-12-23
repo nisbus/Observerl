@@ -13,7 +13,6 @@
 *.tar*
 *.so
 *.o
-/doc/*
 *.trace
 *.production
 /eproject.cfg

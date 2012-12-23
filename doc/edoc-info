@@ -1,0 +1,4 @@
+{application,observerl}.
+{packages,[]}.
+{modules,[aggregate,eval,filter,observer,observerl_app,observerl_sup,
+          sized_window,test_run,timed_window]}.
