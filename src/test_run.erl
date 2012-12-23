@@ -9,7 +9,7 @@
 -module(test_run).
 -include("../include/types.hrl").
 %% API
--export([run/0, run_named/0, run_timed_window/0, run_sized_window/0]).
+-export([run/0, run_named/0, run_timed_window/0, run_sized_window/0, moving_average/0, transform/0]).
 
 %%%===================================================================
 %%% API
@@ -68,6 +68,47 @@ run_sized_window() ->
     observer:on_next(20),
     observer:on_next(20),
     observer:on_next(20),
+    observer:unsubscribe(self()),
+    observer:stop().
+
+moving_average() ->
+    observer:start_link(),
+
+    S = #subscription{aggregate = "fun(X,Y) ->
+					  case Y of
+					      {A,C} ->
+						  {((A*C+X)/ (C+1)),C+1};  
+					      A ->
+						  {((X+A) / 2),2}
+					  end
+				  end."},
+    observer:subscribe(S),
+    observer:on_next(20),
+    observer:on_next(21),
+    observer:on_next(22),
+    observer:on_next(23),
+    observer:on_next(24),
+    observer:unsubscribe(self()),
+    observer:stop().
+    
+transform() ->
+    observer:start_link(),
+
+    S = #subscription{aggregate = "fun(X,Y) ->
+					  case Y of
+					      {A,C} ->
+						  {((A*C+X)/ (C+1)),C+1};  
+					      A ->
+						  {((X+A) / 2),2}
+					  end
+				  end.",
+		     transform = "fun(V) -> case V of {A,C} -> A; _ -> V end end."},
+    observer:subscribe(S),
+    observer:on_next(20),
+    observer:on_next(21),
+    observer:on_next(22),
+    observer:on_next(23),
+    observer:on_next(24),
     observer:unsubscribe(self()),
     observer:stop().
 

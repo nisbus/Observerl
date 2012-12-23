@@ -38,6 +38,7 @@
 -record(subscription,
 	{
 	  filters :: undefined | [fun()] | [string()] | [binary()], 
+transform :: undefined | fun() | string() | binary(),
 aggregate :: undefined | fun() | string() | binary() ,
 window :: undefined | window_spec()
 }).
@@ -47,6 +48,7 @@ window :: undefined | window_spec()
 	  filters :: undefined | [fun()],
 aggregate :: undefined | pid(),
 window :: undefined | pid(),
+transform :: undefined | fun(),
 events :: [any()],
 notify :: pid()
 }).

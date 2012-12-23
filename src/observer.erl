@@ -168,7 +168,7 @@ handle_call(list, _From, #state{observers = Obs}=State) ->
 
 %%%@hidden
 handle_call({subscribe, #subscription{filters = F, aggregate = A,
-			 window = W}},From,State) ->
+			 window = W, transform = T}},From,State) ->
     io:format("Creating filters\n"),
     Filters = case io_lib:printable_list(F) of
 		  true ->
@@ -176,6 +176,7 @@ handle_call({subscribe, #subscription{filters = F, aggregate = A,
 		  false ->
 		      eval:make_funs(F)
 	      end,
+    Trans = eval:make_fun(T),
     Agg = create_aggregator(A),  
     Window = create_window(W),
     {FromPid, _FromRef} = From,
@@ -183,6 +184,7 @@ handle_call({subscribe, #subscription{filters = F, aggregate = A,
     {reply,ok,add(#observer_state{filters = Filters,
 				  aggregate = Agg,
 				  window = Window,
+				  transform = Trans,
 				  notify = FromPid},
 		  State)};	   
 
@@ -203,8 +205,9 @@ handle_cast(stop,State) ->
 %%%@hidden
 handle_cast({next,Value}, #state{observers = Obs} = State) ->
     lists:foreach(fun(#observer_state{filters = F, aggregate =_A,
-			 window = _W, events = _E,
-			 notify = _N}) ->
+				      window = _W, events = _E,
+				      transform = T,
+				      notify = _N}) ->
 			  case run_filters(F,Value) of
 			      true ->
 				  io:format("Value passed filters ~p\n",[Value]),
@@ -213,9 +216,14 @@ handle_cast({next,Value}, #state{observers = Obs} = State) ->
 					  io:format("Value aggregated ~p\n",[Aggregate]),
 					  case run_window(_W,Aggregate) of
 					      {true, Window} ->
-						  io:format("Value not windowed ~p\n",[Window]),
-						  io:format("Sending value to subscriber ~p\n",[_N]),
-						  _N ! {Window, self()};
+						  Result = case is_function(T) of
+						      true ->
+							  {T(Window),self()};
+						      false ->
+							  {Window, self()}
+						  end,
+						  io:format("Sending value to subscriber ~p\n",[Result]),
+						  _N ! Result;
 					      _ ->
 						  io:format("value is windowed, window will notify subscriber\n"),
 						  void
@@ -282,9 +290,8 @@ remove(Pid,#state{observers = Obs} =State) ->
     io:format("Subscriber ~p\n",[Subscriber]),
     case Subscriber of
 	[] -> State;
-	_ ->
-	    Window = Subscriber#observer_state.window,
-	    Aggregate = Subscriber#observer_state.aggregate,
+	_ ->	    
+	    #observer_state{window = Window, aggregate = Aggregate} = Subscriber,
 	    stop_window(Window),
 	    stop_aggregate(Aggregate),
 	    State#state{observers= lists:delete(Subscriber,Obs)}
