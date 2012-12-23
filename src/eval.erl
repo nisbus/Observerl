@@ -24,6 +24,8 @@ make_fun(S) ->
     {_,Fun,_} = erl_eval:exprs(Exp,erl_eval:new_bindings()),
     Fun.
 
+make_funs(undefined) ->
+    [];
 make_funs(S) ->
     lists:map(fun(X) ->
 		      make_fun(X)

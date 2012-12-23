@@ -73,7 +73,7 @@ init([]) ->
 handle_call(list, _From, #state{observers = Obs}=State) ->
     {reply, Obs, State};
 
-handle_call({subscribe, #observer_state{filters = F, aggregate = A,
+handle_call({subscribe, #subscription{filters = F, aggregate = A,
 			 window = W}},From,State) ->
     Filters = case io_lib:printable_list(F) of
 		  true ->
@@ -84,6 +84,7 @@ handle_call({subscribe, #observer_state{filters = F, aggregate = A,
     Agg = create_aggregator(A),  
     Window = create_window(W),
     {FromPid, _FromRef} = From,
+    io:format("Adding subscriber\n"),
     {reply,ok,add(#observer_state{filters = Filters,
 				  aggregate = Agg,
 				  window = Window,
@@ -91,7 +92,7 @@ handle_call({subscribe, #observer_state{filters = F, aggregate = A,
 		  State)};	   
 
 handle_call({unsubscribe, Pid},_From,State) ->  
-    io:format("unsubscribing"),
+    io:format("unsubscribing\n"),
     {reply,ok,remove(Pid,State)};	   
 
 handle_call(_Request, _From, State) ->
@@ -124,6 +125,7 @@ handle_cast({next,Value}, #state{observers = Obs} = State) ->
 					  void
 				  end;
 			      false ->
+				  io:format("Value received the got filtered away\n"),
 				  void
 			  end			  			      
 		  end,Obs),
@@ -170,10 +172,16 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 remove(Pid,#state{observers = Obs} =State) ->
     Subscriber = lists:keyfind(Pid, #observer_state.notify,Obs),
+
     io:format("Subscriber ~p\n",[Subscriber]),
     case Subscriber of
 	[] -> State;
-	_ -> State#state{observers= lists:delete(Subscriber,Obs)}
+	_ ->
+	    Window = Subscriber#observer_state.window,
+	    Aggregate = Subscriber#observer_state.aggregate,
+	    stop_window(Window),
+	    stop_aggregate(Aggregate),
+	    State#state{observers= lists:delete(Subscriber,Obs)}
     end.
 
 add(Observer,#state{observers = Obs}) ->    
@@ -196,6 +204,7 @@ run_aggregate(A,Value) when is_pid(A) ->
     Aggregated = aggregate:add(A,Value),
     {true, Aggregated};
 run_aggregate(_A, _Value) ->
+    io:format("Invalid aggregate ~p, ~p\n",[_A, _Value]),
     false.
     
 run_window({timed,W},Value) when is_pid(W) ->
@@ -235,3 +244,14 @@ create_window({sized, Size, Listener}) ->
     {ok, Pid} = sized_window:start_link(Size,Listener),
     {sized,Pid}.
     
+stop_window({sized,W}) when is_pid(W)->
+    sized_window:stop(W);
+stop_window({timed,W}) when is_pid(W)->
+    timed_window:stop(W);
+stop_window(_) ->
+    ok.
+
+stop_aggregate(A) when is_pid(A) ->
+    aggregate:stop(A);
+stop_aggregate(_) ->
+    ok.

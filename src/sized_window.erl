@@ -20,7 +20,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/2, update/2,current_window/1, external_state/1]).
+-export([start_link/2, update/2,current_window/1, stop/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -52,10 +52,9 @@ update(Instance,Data) ->
 current_window(Instance) ->
     gen_server:call(Instance,current_state).	
 
-%% @doc Returns the data in the current external state
-external_state(Instance) ->	     
-    gen_server:call(Instance, external_state).
-%%--------------------------------------------------------------------
+stop(Instance) ->
+    gen_server:cast(Instance,stop).
+%%--------------------------------------------------------------------   
 %% @doc
 %% Starts the server
 %%--------------------------------------------------------------------
@@ -87,11 +86,15 @@ handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
 
+handle_cast(stop, State) ->
+    {stop,normal, State};
+
 handle_cast({incoming_data, Data}, #state{current_window = W, window_length = Size, listener = Listener} = State) ->
     NewWin = lists:append(W,[Data]),
     Exp = process_expired(NewWin, Size),
     case length(Exp) of
 	Size ->
+	    io:format("Sending window because of size"),
 	    Listener ! {window, Exp, self()};
 	_ ->
 	    void

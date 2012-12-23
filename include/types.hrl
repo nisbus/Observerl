@@ -2,8 +2,8 @@
 -type timestamp() :: {integer(),integer(),integer()}.
 -type timeframe() :: {integer(), integer(), integer()}.
 -type timestamped() :: ({any(),timestamp()}).
--type window_spec() :: {timed, timeframe(), fun(), undefined|fun(), undefined|any(), integer()} |
-{sized, integer(), fun(), undefined|fun(), undefined|any()}.
+-type window_spec() :: {timed, timeframe(), integer(), pid()} |
+		       {sized, integer(), pid()}.
 
 -record(subscription,
 	{

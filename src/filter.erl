@@ -10,6 +10,10 @@
 -module(filter).
 -export([match/2]).
 
+match(undefined,_) ->
+    true;
+match([],_) ->
+    true;
 match(Funs, Value) ->
     Matches = lists:map(fun(F) ->
 				F(Value)

@@ -21,7 +21,7 @@
 
 -include("../include/types.hrl").
 %% API
--export([start_link/3, update/2,current_window/1]).
+-export([start_link/3, update/2,current_window/1, stop/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -53,6 +53,8 @@ update(Data,Instance) ->
 current_window(Instance) ->
     gen_server:call(Instance,current_window).	
 
+stop(Instance) ->
+    gen_server:cast(Instance,stop).
 %%--------------------------------------------------------------------
 %% @doc
 %% Starts the server
@@ -86,6 +88,9 @@ handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
 
+handle_cast(stop, State) ->
+    {stop,normal, State};
+
 handle_cast({incoming_data, Data},#state{current_window = W} = State) ->
     NewWindow = add_new(W, Data),
     {noreply,State#state{current_window = NewWindow}};
@@ -98,6 +103,7 @@ handle_cast(_Msg, State) ->
 %% @end
 handle_info(check_expired, #state{current_window = W, window_length_in_ms = MS, listener = Pid} = State) ->
     NewWin = process_expired(W,MS),
+    io:format("sending window on time ~p\n",[NewWin]),
     Pid ! {window, NewWin, self()},
     {noreply, State#state{current_window = NewWin}};
 
@@ -109,6 +115,7 @@ terminate(_Reason, #state{check_expired_timer = T} = _State) ->
     	undefined ->
     	    void;
     	_ ->
+	    io:format("timer cancelled\n"),
     	    timer:cancel(T)
     end,
     ok.

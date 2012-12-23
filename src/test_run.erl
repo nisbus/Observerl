@@ -9,14 +9,14 @@
 -module(test_run).
 -include("../include/types.hrl").
 %% API
--export([run/0, run_named/0]).
+-export([run/0, run_named/0, run_timed_window/0, run_sized_window/0]).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 run() ->
     {ok, _Obs} = observer:start_link(),
-    S = #observer_state{filters = "fun(X) -> X < 30 end.", aggregate = "fun(X,Y) -> X+Y end."},
+    S = #subscription{filters = "fun(X) -> X < 30 end.", aggregate = "fun(X,Y) -> X+Y end."},
     observer:subscribe(S),
     observer:on_next(20),
     observer:on_next(30),
@@ -27,7 +27,7 @@ run() ->
 run_named() ->
     Name = 'test_observer',
     {ok, _Obs} = observer:start_link(Name),
-    S = #observer_state{filters = "fun(X) -> X < 30 end.", aggregate = "fun(X,Y) -> X+Y end."},
+    S = #subscription{filters = "fun(X) -> X < 30 end.", aggregate = "fun(X,Y) -> X+Y end."},
     observer:subscribe(S,Name),
     observer:on_next(20,Name),
     observer:on_next(30,Name),
@@ -35,12 +35,39 @@ run_named() ->
     observer:unsubscribe(self(), Name),
     observer:stop(Name).
     
-%%--------------------------------------------------------------------
-%% @doc
-%% @spec
-%% @end
-%%--------------------------------------------------------------------
+run_timed_window() ->
+    observer:start_link(),
+    S = #subscription{window = {timed, {0,0,1}, 100, self()}}, 
+    observer:subscribe(S),
+    observer:on_next(20),
+    timer:sleep(500),
+    observer:on_next(20),
+    timer:sleep(500),
+    observer:on_next(20),
+    timer:sleep(500),
+    observer:on_next(20),
+    timer:sleep(500),
+    observer:on_next(20),
+    timer:sleep(500),
+    observer:unsubscribe(self()),
+    observer:stop().
 
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
+    
+run_sized_window() ->
+    observer:start_link(),
+    S = #subscription{window = {sized, 5, self()}}, 
+    observer:subscribe(S),
+    observer:on_next(20),
+    observer:on_next(20),
+    observer:on_next(20),
+    observer:on_next(20),
+    observer:on_next(20),
+    observer:on_next(20),
+    observer:on_next(20),
+    observer:on_next(20),
+    observer:on_next(20),
+    observer:on_next(20),
+    observer:on_next(20),
+    observer:unsubscribe(self()),
+    observer:stop().
+
