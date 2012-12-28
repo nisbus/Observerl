@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/nisbus/Observerl.png?branch=master)](https://travis-ci.org/nisbus/Observerl)  
+  
 Observerl
 =========   
 Observer that you can subscribe to with filters for the stream. Inspired by the Reactive Extensions for .NET and Javascript.  
