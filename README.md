@@ -1,5 +1,5 @@
 Observerl
-=========  
+=========   
 Observer that you can subscribe to with filters for the stream. Inspired by the Reactive Extensions for .NET and Javascript.  
 
 Check out the [documentation](http://nisbus.github.com/Observerl/)  
