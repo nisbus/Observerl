@@ -4,7 +4,7 @@ Observer that you can subscribe to with filters for the stream. Inspired by the 
 
 Check out the [documentation](http://nisbus.github.com/Observerl/)  
   
-To start with test like this:  
+To start with test like this:   
   
 ./rebar compile  
 
